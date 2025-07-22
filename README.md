@@ -156,6 +156,8 @@ The model's performance is evaluated using:
 - **RMSE (Root Mean Square Error)**: Measures prediction accuracy
 - **MAE (Mean Absolute Error)**: Average absolute prediction error
 - **Visual Analysis**: Actual vs Predicted price plots
+- <img width="1400" height="600" alt="actual_vs_predicted" src="https://github.com/user-attachments/assets/3396cd94-e7de-4080-820d-e90e35fa1965" />
+
 
 ## 📁 Key Files Description
 
