@@ -1,32 +1,54 @@
-# train.py
+# src/train.py
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tqdm.notebook import trange
+from torch.utils.data import DataLoader, TensorDataset
+import matplotlib.pyplot as plt
+import os
+import numpy as np
 
-def train_model(model, X_train, y_train, device, num_epochs=100, lr=0.001):
+def create_sequences(data, seq_len):
+    X, y = [], []
+    for i in range(seq_len, len(data)):
+        X.append(data[i-seq_len:i])
+        y.append(data[i, 0])  # predicting 'Close'
+    return np.array(X), np.array(y)
+
+def train_model(model, X_train, y_train, num_epochs=100, batch_size=32, lr=1e-4, device='cpu'):
+    model.to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    X_train_tensor = torch.tensor(X_train, dtype=torch.float32).to(device)
-    y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1).to(device)
+    train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32),
+                                  torch.tensor(y_train, dtype=torch.float32))
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    model.to(device)
     model.train()
-    train_losses = []
-
-    for epoch in trange(num_epochs, desc="Training Epochs"):
-        outputs = model(X_train_tensor)
-        loss = criterion(outputs, y_train_tensor)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        train_losses.append(loss.item())
-
+    losses = []
+    for epoch in range(num_epochs):
+        epoch_loss = 0
+        for xb, yb in train_loader:
+            xb, yb = xb.to(device), yb.to(device)
+            optimizer.zero_grad()
+            out = model(xb).squeeze()
+            loss = criterion(out, yb)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+        losses.append(epoch_loss / len(train_loader))
         if (epoch + 1) % 5 == 0:
-            print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.6f}")
+            print(f"Epoch {epoch+1}/{num_epochs} - Loss: {loss.item():.6f}")
+    return model, losses
 
-    return model, train_losses
+def save_model(model, path='outputs/saved_models/lstm_stock_model.pth'):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    torch.save(model.state_dict(), path)
+
+def plot_losses(losses):
+    plt.plot(losses)
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE Loss")
+    plt.title("Training Loss Curve")
+    plt.grid(True)
+    plt.show()
